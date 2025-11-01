@@ -1,0 +1,36 @@
+    # Step 1: Build stage (Node.js for React/Vite)
+    FROM node:18 AS build-stage
+    WORKDIR /app
+    
+    # Install git to allow repo cloning
+    RUN apt-get update && apt-get install -y git
+    
+    # Clone your frontend repo
+    RUN git clone https://github.com/Guru2006ug/K8sFES104.git .
+    
+    # Fix the case-sensitive import issue
+    RUN sed -i "s|./components/AboutUs|./components/Aboutus|g" src/App.jsx
+    
+    # Update React Router basename to match Tomcat context path
+    RUN sed -i 's/basename="\/ecommerce"/basename="\/ecommerce-frontend"/g' src/App.jsx
+    
+    # Fix API URLs in services to use correct backend URL with back1 context
+    RUN find src -name "*.js" -exec sed -i 's|http://localhost:3083/back1|http://localhost:30083/back1|g' {} \;
+    RUN find src -name "*.js" -exec sed -i 's|http://localhost:9090/back1|http://localhost:30083/back1|g' {} \;
+    
+    # Verify the change was made (for debugging)
+    RUN cat src/App.jsx | grep -n "basename=" || echo "No basename found"
+    
+    RUN npm install
+    RUN npm run build
+
+    # Step 2: Runtime stage (Tomcat for serving)
+    FROM tomcat:9-jdk17
+    RUN rm -rf /usr/local/tomcat/webapps/*
+
+    # Copy React build output into Tomcat webapps for both contexts
+    COPY --from=build-stage /app/dist /usr/local/tomcat/webapps/ecommerce-frontend
+    COPY --from=build-stage /app/dist /usr/local/tomcat/webapps/ecommerce
+
+    EXPOSE 8080
+    CMD ["catalina.sh", "run"]
