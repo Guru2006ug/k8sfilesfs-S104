@@ -103,7 +103,7 @@ spec:
             - containerPort: 8080
           env:
             - name: REACT_APP_BACKEND_URL
-              value: http://localhost:30083
+              value: http://ec2-3-85-237-59.compute-1.amazonaws.com:30083
 
 # =========================
 # Services
